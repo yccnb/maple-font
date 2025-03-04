@@ -41,7 +41,7 @@
   },
   "cn": {
     "enable": true,
-    "with_nerd_font": true,
+    "with_nerd_font": false,
     "fix_meta_table": true,
     "clean_cache": false,
     "narrow": false,
