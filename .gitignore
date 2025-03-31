@@ -1,8 +1,9 @@
 FontPatcher
 fonts
 release
-source/cn
+source/cn/**/*.ttf
 cdn
 
 __pycache__
 .DS_store
+*.zip

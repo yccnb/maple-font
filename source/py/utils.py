@@ -26,7 +26,7 @@ def is_ci():
     return False
 
 
-def run(command, extra_args=None, log=not is_ci()):
+def run(command, extra_args=None, log=not is_ci(), cwd=None):
     """
     Run a command line interface (CLI) command.
     """
@@ -34,7 +34,9 @@ def run(command, extra_args=None, log=not is_ci()):
         extra_args = []
     if isinstance(command, str):
         command = command.split()
-    subprocess.run(command + extra_args, stdout=subprocess.DEVNULL if not log else None)
+    subprocess.run(
+        command + extra_args, stdout=subprocess.DEVNULL if not log else None, cwd=cwd
+    )
 
 
 def set_font_name(font: TTFont, name: str, id: int):
@@ -252,3 +254,23 @@ def compress_folder(
             sha256.update(data)
 
     return sha256.hexdigest(), zip_name_without_ext
+
+
+def generate_directory_hash(dir_path: str) -> str:
+    hasher = hashlib.sha256()
+    for root, _, files in sorted(walk(dir_path)):
+        for file in sorted(files):
+            file_path = path.join(root, file)
+            try:
+                with open(file_path, "rb") as f:
+                    while True:
+                        # 4KB chunk size
+                        chunk = f.read(4096)
+                        if not chunk:
+                            break
+                        hasher.update(chunk)
+
+            except (IOError, OSError) as e:
+                raise Exception(f"Error reading file: {file_path} - {e}")
+
+    return hasher.hexdigest()

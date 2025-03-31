@@ -6,7 +6,7 @@ import re
 import shutil
 from typing import Callable
 from fontTools.ttLib import TTFont
-from source.py.utils import run
+from source.py.utils import generate_directory_hash, run
 
 # Mapping of style names to weights
 weight_map = {
@@ -38,7 +38,7 @@ def format_fontsource_name(filename: str):
 
 
 def format_woff2_name(filename: str):
-    return filename.replace('.woff2', '-VF.woff2')
+    return filename.replace(".woff2", "-VF.woff2")
 
 
 def rename_files(dir: str, fn: Callable[[str], str]):
@@ -97,6 +97,14 @@ def git_commit(tag, files):
     print("Pushed to origin")
 
 
+def update_submodule(cwd: str):
+    run("git pull", cwd=cwd)
+    run("git add .", cwd=cwd)
+    run(["git", "commit", "-m", "Update font"], cwd=cwd)
+    run("git push origin", cwd=cwd)
+    print("Update page files")
+
+
 def format_font_map_key(key: int) -> str:
     formatted_key = f"{key:05X}"
     if formatted_key.startswith("0"):
@@ -138,7 +146,7 @@ def main():
     args = parser.parse_args()
     tag = parse_tag(args)
     # prompt and wait for user input
-    choose = input(f"Tag {tag}? (Y or n) ")
+    choose = input(f"{'[DRY] ' if args.dry else ''}Tag {tag}? (Y or n) ")
     if choose != "" and choose.lower() != "y":
         print("Aborted")
         return
@@ -155,11 +163,23 @@ def main():
     shutil.copytree("./fonts/CN", "./cdn/cn")
     print("Generate CN files")
 
-    woff2_dir = 'woff2/var'
+    woff2_dir = "woff2/var"
     if os.path.exists(target_fontsource_dir):
         shutil.rmtree(woff2_dir)
     run(f"ftcli converter ft2wf -f woff2 ./fonts/Variable -out {woff2_dir}")
     rename_files(woff2_dir, format_woff2_name)
+
+    cn_static_path = "./source/cn/static"
+    with open(f"{cn_static_path}.sha256", "w") as f:
+        f.write(generate_directory_hash(cn_static_path))
+        f.flush()
+
+    submodule_path = './maple-font-page'
+    public_path = f"{submodule_path}/public/fonts"
+    shutil.rmtree(public_path, ignore_errors=True)
+    shutil.copytree(woff2_dir, public_path)
+    update_submodule(submodule_path)
+
     print("Update variable WOFF2")
 
     # write_unicode_map_json(
@@ -169,7 +189,7 @@ def main():
     if args.dry:
         print("Dry run")
     else:
-        git_commit(tag, ['build.py', 'woff2'])
+        git_commit(tag, ["build.py", "woff2"])
 
 
 if __name__ == "__main__":
